@@ -69,8 +69,8 @@ LORA_TARGET_MODULES = [
 # A100 40GB), you can raise PER_DEVICE_BATCH_SIZE and lower
 # GRADIENT_ACCUMULATION_STEPS.
 NUM_EPOCHS = 3
-PER_DEVICE_BATCH_SIZE = 4
-GRADIENT_ACCUMULATION_STEPS = 4          # effective batch size = 16
+PER_DEVICE_BATCH_SIZE = 1
+GRADIENT_ACCUMULATION_STEPS = 16        # effective batch size = 16
 LEARNING_RATE = 2e-4
 WARMUP_RATIO = 0.03
 LOGGING_STEPS = 25
@@ -136,14 +136,31 @@ print("=" * 70)
 # LOAD TOKENIZER
 # ============================================================
 
+# print(f"\nLoading tokenizer for {MODEL_ID} ...")
+
+# tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+
+# if tokenizer.pad_token is None:
+#     tokenizer.pad_token = tokenizer.eos_token
+
+# tokenizer.padding_side = "right"
+
+
 print(f"\nLoading tokenizer for {MODEL_ID} ...")
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+HF_TOKEN = os.environ.get("HF_TOKEN", None)
+
+tokenizer = AutoTokenizer.from_pretrained(
+    MODEL_ID,
+    token=HF_TOKEN,
+    trust_remote_code=True
+)
 
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
 tokenizer.padding_side = "right"
+
 
 
 # ============================================================
@@ -159,10 +176,17 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True,
 )
 
+# model = AutoModelForCausalLM.from_pretrained(
+#     MODEL_ID,
+#     quantization_config=bnb_config,
+#     device_map="auto",
+# )
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
+    token=HF_TOKEN,
     quantization_config=bnb_config,
     device_map="auto",
+    trust_remote_code=True,
 )
 
 model = prepare_model_for_kbit_training(model)
