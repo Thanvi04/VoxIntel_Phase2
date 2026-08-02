@@ -13,19 +13,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 INPUT_FILE = (
     BASE_DIR
     / "output"
-    / "final_training_dataset_cleaned.jsonl"
+    / "final_training_dataset_filtered.jsonl"
 )
 
 REPORT_FILE = (
     BASE_DIR
     / "output"
-    / "training_dataset_validation_report.txt"
+    / "training_dataset_revalidation_report.txt"
 )
 
 SUSPICIOUS_FILE = (
     BASE_DIR
     / "output"
-    / "suspicious_training_records.jsonl"
+    / "suspicious_training_records_after_filtering.jsonl"
 )
 
 

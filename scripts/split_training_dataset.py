@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 INPUT_FILE = (
     BASE_DIR
     / "output"
-    / "final_training_dataset_cleaned.jsonl"
+    / "final_training_dataset_filtered.jsonl"
 )
 
 OUTPUT_DIR = (

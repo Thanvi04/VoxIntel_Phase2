@@ -1,0 +1,8 @@
+pandas
+openpyxl
+transformers>=4.51.0
+torch
+peft
+bitsandbytes
+accelerate
+datasets
