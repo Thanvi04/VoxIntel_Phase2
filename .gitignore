@@ -20,3 +20,5 @@ output/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+VoxIntel_Dataset_Cleaning/

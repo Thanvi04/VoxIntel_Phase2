@@ -315,7 +315,23 @@ tokenized_datasets = raw_datasets.map(
     desc="Tokenizing",
 )
 
+# ============================================================
+# USE A SUBSET OF THE DATASET (FOR KAGGLE TRAINING)
+# ============================================================
 
+TRAIN_SUBSET = 10000
+VALIDATION_SUBSET = 1000
+
+tokenized_datasets["train"] = tokenized_datasets["train"].select(
+    range(min(TRAIN_SUBSET, len(tokenized_datasets["train"])))
+)
+
+tokenized_datasets["validation"] = tokenized_datasets["validation"].select(
+    range(min(VALIDATION_SUBSET, len(tokenized_datasets["validation"])))
+)
+
+print(f"\nTraining samples: {len(tokenized_datasets['train'])}")
+print(f"Validation samples: {len(tokenized_datasets['validation'])}")
 # ============================================================
 # DATA COLLATOR
 # ============================================================
