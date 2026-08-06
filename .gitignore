@@ -22,3 +22,5 @@ output/
 Thumbs.db
 
 VoxIntel_Dataset_Cleaning/
+
+models/final_adapter/adapter_model.safetensors
