@@ -25,6 +25,12 @@ Run from the project root:
 import json
 import os
 
+# Reduces CUDA memory fragmentation — set before torch/CUDA initializes.
+# This is the fix PyTorch's own OOM error message recommends; without it,
+# a GPU can report "out of memory" even when a good chunk of its total
+# memory is technically free but too fragmented to serve one allocation.
+os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
+
 import torch
 from datasets import load_dataset
 from transformers import (
@@ -51,7 +57,7 @@ OUTPUT_DIR = MODELS_DIR / "qwen3-4b-tulu-lora"
 TRAIN_FILE = TRAINING_DATA / "final_training_dataset_v3.jsonl"
 VALIDATION_FILE = TRAINING_DATA / "final_validation_dataset_v3.jsonl"
 
-MAX_SEQUENCE_LENGTH = 512
+MAX_SEQUENCE_LENGTH = 256
 
 # LoRA settings
 LORA_R = 16
@@ -71,8 +77,8 @@ LORA_TARGET_MODULES = [
 # halve PER_DEVICE_BATCH_SIZE and double GRADIENT_ACCUMULATION_STEPS
 # to keep the same effective batch size of 32.
 NUM_EPOCHS = 3
-PER_DEVICE_BATCH_SIZE = 2
-GRADIENT_ACCUMULATION_STEPS = 16         # effective batch size = 32
+PER_DEVICE_BATCH_SIZE = 1
+GRADIENT_ACCUMULATION_STEPS = 32         # effective batch size = 32
 LEARNING_RATE = 2e-4
 WARMUP_RATIO = 0.03
 LOGGING_STEPS = 25
@@ -363,7 +369,7 @@ data_collator = DataCollatorForSeq2Seq(
 # whether the full run will fit in one Kaggle session (~9 hours)
 # using YOUR actual batch size / GPU, not a guess.
 
-TRIAL_RUN = False
+TRIAL_RUN = True
 TRIAL_MAX_STEPS = 200
 
 import time
