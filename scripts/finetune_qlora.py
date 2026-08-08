@@ -71,8 +71,8 @@ LORA_TARGET_MODULES = [
 # halve PER_DEVICE_BATCH_SIZE and double GRADIENT_ACCUMULATION_STEPS
 # to keep the same effective batch size of 32.
 NUM_EPOCHS = 3
-PER_DEVICE_BATCH_SIZE = 8
-GRADIENT_ACCUMULATION_STEPS = 4         # effective batch size = 32
+PER_DEVICE_BATCH_SIZE = 2
+GRADIENT_ACCUMULATION_STEPS = 16         # effective batch size = 32
 LEARNING_RATE = 2e-4
 WARMUP_RATIO = 0.03
 LOGGING_STEPS = 25
@@ -174,7 +174,7 @@ print(f"\nLoading {MODEL_ID} in 4-bit ...")
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_compute_dtype=torch.float16,
     bnb_4bit_use_double_quant=True,
 )
 
@@ -363,7 +363,7 @@ data_collator = DataCollatorForSeq2Seq(
 # whether the full run will fit in one Kaggle session (~9 hours)
 # using YOUR actual batch size / GPU, not a guess.
 
-TRIAL_RUN = True
+TRIAL_RUN = False
 TRIAL_MAX_STEPS = 200
 
 import time
@@ -392,7 +392,8 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="eval_loss",
     greater_is_better=False,
-    bf16=True,
+    bf16=False,
+    fp16=True,
     report_to="none",
     seed=RANDOM_SEED,
     max_steps=TRIAL_MAX_STEPS if TRIAL_RUN else -1,
