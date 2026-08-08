@@ -77,8 +77,8 @@ LORA_TARGET_MODULES = [
 # halve PER_DEVICE_BATCH_SIZE and double GRADIENT_ACCUMULATION_STEPS
 # to keep the same effective batch size of 32.
 NUM_EPOCHS = 3
-PER_DEVICE_BATCH_SIZE = 1
-GRADIENT_ACCUMULATION_STEPS = 32         # effective batch size = 32
+PER_DEVICE_BATCH_SIZE = 4
+GRADIENT_ACCUMULATION_STEPS = 8         # effective batch size = 32
 LEARNING_RATE = 2e-4
 WARMUP_RATIO = 0.03
 LOGGING_STEPS = 25
@@ -390,12 +390,12 @@ training_args = TrainingArguments(
     lr_scheduler_type="cosine",
     optim="paged_adamw_8bit",
     logging_steps=LOGGING_STEPS,
-    eval_strategy="steps",
+    eval_strategy="no" if TRIAL_RUN else "steps",
     eval_steps=EVAL_STEPS,
     save_strategy="steps",
     save_steps=SAVE_STEPS,
     save_total_limit=SAVE_TOTAL_LIMIT,
-    load_best_model_at_end=True,
+    load_best_model_at_end=False if TRIAL_RUN else True,
     metric_for_best_model="eval_loss",
     greater_is_better=False,
     bf16=False,
