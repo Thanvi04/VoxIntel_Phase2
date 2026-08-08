@@ -1,0 +1,21 @@
+{
+  "base_model": "Qwen/Qwen3-4B",
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_target_modules": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "num_epochs": 1,
+  "effective_batch_size": 16,
+  "learning_rate": 0.0002,
+  "train_records": 10000,
+  "validation_records": 1000,
+  "final_train_loss": 1.073166583251953,
+  "adapter_path": "/kaggle/working/VoxIntel_Phase2/models/qwen3-4b-tulu-lora/final_adapter"
+}
