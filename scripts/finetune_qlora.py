@@ -48,8 +48,8 @@ MODEL_ID = "Qwen/Qwen3-4B"
 
 OUTPUT_DIR = MODELS_DIR / "qwen3-4b-tulu-lora"
 
-TRAIN_FILE = TRAINING_DATA / "train.jsonl"
-VALIDATION_FILE = TRAINING_DATA / "validation.jsonl"
+TRAIN_FILE = TRAINING_DATA / "final_training_dataset_v3.jsonl"
+VALIDATION_FILE = TRAINING_DATA / "final_validation_dataset_v3.jsonl"
 
 MAX_SEQUENCE_LENGTH = 512
 
@@ -62,15 +62,17 @@ LORA_TARGET_MODULES = [
     "gate_proj", "up_proj", "down_proj",
 ]
 
-# Training hyperparameters. Tuned for a single consumer GPU with
-# 16 GB VRAM (e.g. RTX 4080/4090, A4000). If you have less VRAM,
-# lower PER_DEVICE_BATCH_SIZE and raise GRADIENT_ACCUMULATION_STEPS
-# to keep the same effective batch size. If you have more VRAM (e.g.
-# A100 40GB), you can raise PER_DEVICE_BATCH_SIZE and lower
-# GRADIENT_ACCUMULATION_STEPS.
+# Training hyperparameters. UPDATED for Kaggle T4/P100 (16 GB VRAM,
+# weaker compute than a 4090) running mostly-SHORT sequences (most
+# VoxIntel examples are a few words in, a few words out). Batch
+# size 1 (the original setting, tuned for long-sequence data on a
+# faster GPU) wastes most of the GPU's parallelism on data this
+# short. Start with these values; if you hit an out-of-memory error,
+# halve PER_DEVICE_BATCH_SIZE and double GRADIENT_ACCUMULATION_STEPS
+# to keep the same effective batch size of 32.
 NUM_EPOCHS = 3
-PER_DEVICE_BATCH_SIZE = 1
-GRADIENT_ACCUMULATION_STEPS = 16        # effective batch size = 16
+PER_DEVICE_BATCH_SIZE = 8
+GRADIENT_ACCUMULATION_STEPS = 4         # effective batch size = 32
 LEARNING_RATE = 2e-4
 WARMUP_RATIO = 0.03
 LOGGING_STEPS = 25
@@ -316,19 +318,28 @@ tokenized_datasets = raw_datasets.map(
 )
 
 # ============================================================
-# USE A SUBSET OF THE DATASET (FOR KAGGLE TRAINING)
+# OPTIONAL: USE A SUBSET OF THE DATASET (set to None to use ALL data)
 # ============================================================
+#
+# The full train set is ~61,813 examples / validation ~2,980.
+# Whether that fits in one Kaggle GPU session depends on your
+# measured steps/sec (see TRIAL_RUN below) — it is NOT capped here
+# by default. If your trial-run estimate shows the full set won't
+# fit in your session/quota, set TRAIN_SUBSET / VALIDATION_SUBSET
+# to a number below instead of guessing blind.
 
-TRAIN_SUBSET = 10000
-VALIDATION_SUBSET = 1000
+TRAIN_SUBSET = None       # e.g. 30000 to cap it — None = use everything
+VALIDATION_SUBSET = None  # e.g. 1500  to cap it — None = use everything
 
-tokenized_datasets["train"] = tokenized_datasets["train"].select(
-    range(min(TRAIN_SUBSET, len(tokenized_datasets["train"])))
-)
+if TRAIN_SUBSET is not None:
+    tokenized_datasets["train"] = tokenized_datasets["train"].select(
+        range(min(TRAIN_SUBSET, len(tokenized_datasets["train"])))
+    )
 
-tokenized_datasets["validation"] = tokenized_datasets["validation"].select(
-    range(min(VALIDATION_SUBSET, len(tokenized_datasets["validation"])))
-)
+if VALIDATION_SUBSET is not None:
+    tokenized_datasets["validation"] = tokenized_datasets["validation"].select(
+        range(min(VALIDATION_SUBSET, len(tokenized_datasets["validation"])))
+    )
 
 print(f"\nTraining samples: {len(tokenized_datasets['train'])}")
 print(f"Validation samples: {len(tokenized_datasets['validation'])}")
@@ -342,6 +353,20 @@ data_collator = DataCollatorForSeq2Seq(
     padding=True,
     label_pad_token_id=-100,
 )
+
+
+# ============================================================
+# TRIAL RUN — measure real speed before committing a full session
+# ============================================================
+# Set TRIAL_RUN = True, run this script once, and read the printed
+# estimate BEFORE launching the real 3-epoch job. This tells you
+# whether the full run will fit in one Kaggle session (~9 hours)
+# using YOUR actual batch size / GPU, not a guess.
+
+TRIAL_RUN = True
+TRIAL_MAX_STEPS = 200
+
+import time
 
 
 # ============================================================
@@ -370,6 +395,7 @@ training_args = TrainingArguments(
     bf16=True,
     report_to="none",
     seed=RANDOM_SEED,
+    max_steps=TRIAL_MAX_STEPS if TRIAL_RUN else -1,
 )
 
 
@@ -384,6 +410,31 @@ trainer = Trainer(
     eval_dataset=tokenized_datasets["validation"],
     data_collator=data_collator,
 )
+
+if TRIAL_RUN:
+    print(f"\n=== TRIAL RUN: {TRIAL_MAX_STEPS} steps only ===\n")
+    start = time.time()
+    trainer.train()
+    elapsed = time.time() - start
+
+    steps_per_sec = TRIAL_MAX_STEPS / elapsed
+    effective_batch = PER_DEVICE_BATCH_SIZE * GRADIENT_ACCUMULATION_STEPS
+    total_steps_full_run = (
+        len(tokenized_datasets["train"]) // effective_batch * NUM_EPOCHS
+    )
+    est_hours = (total_steps_full_run / steps_per_sec) / 3600
+
+    print(f"\nTrial: {TRIAL_MAX_STEPS} steps in {elapsed/60:.1f} min "
+          f"-> {steps_per_sec:.3f} steps/sec")
+    print(f"Full run: ~{total_steps_full_run} steps for {NUM_EPOCHS} epochs "
+          f"over {len(tokenized_datasets['train'])} examples")
+    print(f"ESTIMATED FULL TRAINING TIME: {est_hours:.1f} hours")
+    print("\nKaggle free-GPU sessions cap out around 9 hours. If this "
+          "estimate exceeds that:")
+    print("  - lower TRAIN_SUBSET above instead of guessing")
+    print("  - or lower NUM_EPOCHS to 2")
+    print("  - or raise PER_DEVICE_BATCH_SIZE further if no OOM occurred")
+    raise SystemExit(0)
 
 print("\nStarting training ...\n")
 
